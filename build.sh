@@ -92,8 +92,12 @@ build_dir() {
 	CONFIG=${2};
     fi
     pushd ${CURDIR} 2>&1 > /dev/null
-    OUT1=$(make -f linux.mak ${CONFIG} BUILDDIR=${BUILDDIR} 2>&1)
-    FST=$?
+    FST=0;
+    if [ ! -f Makefile ]; 
+    then
+	OUT1=$(make -f linux.mak ${CONFIG} BUILDDIR=${BUILDDIR} 2>&1)
+	FST=$?
+    fi
     OUT2=$(make install 2>&1)
     SND=$?
 
