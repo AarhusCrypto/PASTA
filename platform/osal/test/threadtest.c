@@ -17,7 +17,7 @@ static int test_thread_create_and_join(OE oe) {
 
   oe->p("Thread tests");
   
-  tid = oe->newthread(test,oe);
+  oe->newthread(&tid,test,oe);
   if (tid) {
     oe->p("Thread successfully created");
   } else {

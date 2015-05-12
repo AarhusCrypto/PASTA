@@ -3,7 +3,7 @@
 #include <unistd.h>
 #endif
 
-volatile MUTEX m = 0;
+static MUTEX m = 0;
 
 void * t(void * a) {
   OE oe = (OE)a;
@@ -23,11 +23,11 @@ static int mutextest(OE oe) {
   {
     OE oe = OperatingEnvironment_New();
     ThreadID tid = 0;
-    m = oe->newmutex();
+    oe->newmutex(&m);
     
     oe->p("locking m");
     oe->lock(m);
-    tid = oe->newthread(t, oe);
+    oe->newthread(&tid,t, oe);
     
     oe->p("locking m again");
     oe->lock(m);

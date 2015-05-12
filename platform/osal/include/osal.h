@@ -56,7 +56,7 @@ Changes:
 
 #include "common.h"
 #include "mutex.h"
-#include <list.h>
+#include <intkeymap.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -118,14 +118,14 @@ typedef struct _cmaphore_ {
     RC_NOMEM,
 	// arguments are inconsistent or wrong
     RC_BAD_ARGS,
-	// data expected in some format, but wasn't
-	RC_BAD_DATA,
-	// blocking function interrupted.
-	RC_INT,
-	// instance impl not set
-	RC_IMPL_NOTSET,
-	// Try again with file descriptor
-	RC_TRY_AGAIN,
+    // data expected in some format, but wasn't
+    RC_BAD_DATA,
+    // blocking function interrupted.
+    RC_INT,
+    // instance impl not set
+    RC_IMPL_NOTSET,
+    // Try again with file descriptor
+    RC_TRY_AGAIN,
   } RC;
 
  // ----------------------------------------
@@ -167,43 +167,6 @@ typedef struct _cmaphore_ {
   typedef void* (*ThreadFunction)(void *);
   typedef uint ThreadID;
   typedef uint FD;
-
-  // ----------------------------------------
-  // Hardcoded int key map
-  // ----------------------------------------
-  typedef struct _int_key_map_ {
-	  /*
-	  * Get a list with all keys in the map
-	  */
-	  List(*keys)();
-
-	  /*
-	  * Insert {value} into the map under {key}
-	  */
-	  void(*put)(ull key, void * value);
-
-	  /*
-	  * Get element inserted under {key}
-	  */
-	  void * (*get)(ull key);
-
-	  /*
-	  * Remove the element stored under {key} and result the element.
-	  */
-	  void * (*rem)(ull key);
-
-	  /*
-	   * Return the size of this guy
-	   */
-	  uint(*size)();
-
-	  /*
-	   * Returns True of the map constains an entry with the given key.
-	   */
-	  bool(*contains)(ull key);
-
-	  void * impl;
-  } *IntKeyMap;
 
 
 /*!
@@ -252,8 +215,11 @@ typedef struct _operating_environment_ {
    * @param lbuf- initially hold the memory available in buf 
    *              upon success lbuf holds the number of bytes 
    *              read.
+   *
+   * @return RC_OK on success, *{lbuf} holdes the numbe of bytes read
+   * into {buf}.
    */
-  RC (*read)(uint fd, byte * buf, uint * lbuf);
+  RC (*read)(FD fd, byte * buf, uint * lbuf);
 
   /*!
    * write to {fd} *{lbuf} bytes from {buf}.
@@ -262,7 +228,7 @@ typedef struct _operating_environment_ {
    * contain the number of bytes written.
    *
    */
-  RC (*write)(uint fd, byte * buf, uint * lbuf);
+  RC (*write)(FD fd, byte * buf, uint * lbuf);
 
   /*!
    * open file descriptor for the resource identified by {name}.
@@ -285,7 +251,7 @@ typedef struct _operating_environment_ {
    *
    * \return RC_OK on success 
    */
-  FD (*close)(uint fd);
+  RC (*close)(FD fd);
   
   /*!
    * if the given file descriptor {fd} is a listening socket {accept}
