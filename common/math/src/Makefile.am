@@ -39,4 +39,4 @@
 include $(top_srcdir)/math.am
 
 lib_LIBRARIES = libmath.a
-libmath_a_SOURCES = mathtest.c
+libmath_a_SOURCES = mathtest.c mini-gmp.c
