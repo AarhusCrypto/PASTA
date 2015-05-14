@@ -881,6 +881,7 @@ va_end(arg);
 COO_DEF(OE, ThreadID, get_thread_id) {
   SimpleOE simpleOE = (SimpleOE)this->impl;
   uint id = GetCurrentThreadId();
+  uint i = 0;
   
   this->lock(simpleOE->lock);
   for(i = 0;i < simpleOE->threads->size();++i) {
@@ -980,8 +981,7 @@ OE OperatingEnvironment_New() {
   oe->syslog =  COO_attach( oe, OE_syslog);
   oe->p =  COO_attach( oe, OE_p);
   oe->number_of_threads =  COO_attach( oe, OE_number_of_threads);
-  oe->get_thread
-_id =  COO_attach( oe, OE_get_thread_id);
+  oe->get_thread_id =  COO_attach( oe, OE_get_thread_id);
   oe->setloglevel =  COO_attach( oe, OE_setloglevel);
   oe->print =  COO_attach( oe, OE_print);
   oe->getSystemLibrary =  COO_attach( oe, OE_getSystemLibrary);

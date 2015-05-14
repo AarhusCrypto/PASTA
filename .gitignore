@@ -12,3 +12,6 @@ platform/datetime/COPYING
 platform/datetime/INSTALL
 platform/osal/COPYING
 platform/osal/INSTALL
+*.idb
+*.tlog
+*.opensdf

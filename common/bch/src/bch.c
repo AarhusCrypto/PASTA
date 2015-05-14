@@ -91,7 +91,7 @@
 
 //#include <linux/errno.h>
 
-#include "./bch.h"
+#include "bch.h"
 
 #if defined(CONFIG_BCH_CONST_PARAMS)
 #define GF_M(_p)               (CONFIG_BCH_CONST_M)
@@ -107,15 +107,15 @@
 #define BCH_ECC_BYTES(_p)      DIV_ROUND_UP(GF_M(_p)*GF_T(_p), 8)
 
 #ifndef dbg
-#define dbg(_fmt, args...)     do {} while (0)
+#define dbg(_fmt, args,...)     do {} while (0)
 #endif
 
 /*
- * represent a polynomial over GF(2^m)
- */
+* represent a polynomial over GF(2^m)
+*/
 struct gf_poly {
 	unsigned int deg;    /* polynomial degree */
-	unsigned int c[0];   /* polynomial terms */
+	unsigned int c[1];   /* polynomial terms */
 };
 
 /* given its degree, compute a polynomial size in bytes */
@@ -203,16 +203,16 @@ static void store_ecc8(struct bch_control *bch, uint8_t *dst,
 void encode_bch(struct bch_control *bch, const uint8_t *data,
 		unsigned int len, uint8_t *ecc)
 {
-	const unsigned int l = BCH_ECC_WORDS(bch)-1;
+	const unsigned int l = BCH_ECC_WORDS(bch) - 1;
 	unsigned int i, mlen;
 	unsigned long m;
-	uint32_t w, r[l+1];
+	uint32_t w, * r;
 	const uint32_t * const tab0 = bch->mod8_tab;
 	const uint32_t * const tab1 = tab0 + 256*(l+1);
 	const uint32_t * const tab2 = tab1 + 256*(l+1);
 	const uint32_t * const tab3 = tab2 + 256*(l+1);
 	const uint32_t *pdata, *p0, *p1, *p2, *p3;
-
+	r = malloc(l + 1);
 	if (ecc) {
 		/* load ecc parity bytes into internal 32-bit buffer */
 		load_ecc8(bch, bch->ecc_buf, ecc);
@@ -269,9 +269,10 @@ void encode_bch(struct bch_control *bch, const uint8_t *data,
 	/* store ecc parity bytes into original parity buffer */
 	if (ecc)
 		store_ecc8(bch, ecc, bch->ecc_buf);
+	free(r);
 }
 
-static inline int modulo(struct bch_control *bch, unsigned int v)
+static int modulo(struct bch_control *bch, unsigned int v)
 {
 	const unsigned int n = GF_N(bch);
 	while (v >= n) {
@@ -284,19 +285,18 @@ static inline int modulo(struct bch_control *bch, unsigned int v)
 /*
  * shorter and faster modulo function, only works when v < 2N.
  */
-static inline int mod_s(struct bch_control *bch, unsigned int v)
+static int mod_s(struct bch_control *bch, unsigned int v)
 {
 	const unsigned int n = GF_N(bch);
 	return (v < n) ? v : v-n;
 }
 
-static inline int deg(unsigned int poly)
-{
+static int deg(unsigned int poly) {
 	/* polynomial degree is the most-significant bit index */
 	return fls(poly)-1;
 }
 
-static inline int parity(unsigned int x)
+static int parity(unsigned int x)
 {
 	/*
 	 * public domain code snippet, lifted from
@@ -310,41 +310,41 @@ static inline int parity(unsigned int x)
 
 /* Galois field basic operations: multiply, divide, inverse, etc. */
 
-static inline unsigned int gf_mul(struct bch_control *bch, unsigned int a,
+static unsigned int gf_mul(struct bch_control *bch, unsigned int a,
 				  unsigned int b)
 {
 	return (a && b) ? bch->a_pow_tab[mod_s(bch, bch->a_log_tab[a]+
 					       bch->a_log_tab[b])] : 0;
 }
 
-static inline unsigned int gf_sqr(struct bch_control *bch, unsigned int a)
+static unsigned int gf_sqr(struct bch_control *bch, unsigned int a)
 {
 	return a ? bch->a_pow_tab[mod_s(bch, 2*bch->a_log_tab[a])] : 0;
 }
 
-static inline unsigned int gf_div(struct bch_control *bch, unsigned int a,
+static unsigned int gf_div(struct bch_control *bch, unsigned int a,
 				  unsigned int b)
 {
 	return a ? bch->a_pow_tab[mod_s(bch, bch->a_log_tab[a]+
 					GF_N(bch)-bch->a_log_tab[b])] : 0;
 }
 
-static inline unsigned int gf_inv(struct bch_control *bch, unsigned int a)
+static unsigned int gf_inv(struct bch_control *bch, unsigned int a)
 {
 	return bch->a_pow_tab[GF_N(bch)-bch->a_log_tab[a]];
 }
 
-static inline unsigned int a_pow(struct bch_control *bch, int i)
+static unsigned int a_pow(struct bch_control *bch, int i)
 {
 	return bch->a_pow_tab[modulo(bch, i)];
 }
 
-static inline int a_log(struct bch_control *bch, unsigned int x)
+static int a_log(struct bch_control *bch, unsigned int x)
 {
 	return bch->a_log_tab[x];
 }
 
-static inline int a_ilog(struct bch_control *bch, unsigned int x)
+static int a_ilog(struct bch_control *bch, unsigned int x)
 {
 	return mod_s(bch, GF_N(bch)-bch->a_log_tab[x]);
 }
@@ -452,7 +452,9 @@ static int solve_linear_system(struct bch_control *bch, unsigned int *rows,
 {
 	const int m = GF_M(bch);
 	unsigned int tmp, mask;
-	int rem, c, r, p, k, param[m];
+	int rem, c, r, p, k, * param;
+
+	param = malloc(m);
 
 	k = 0;
 	mask = 1 << m;
@@ -1131,7 +1133,9 @@ static int build_deg2_base(struct bch_control *bch)
 {
 	const int m = GF_M(bch);
 	int i, j, r;
-	unsigned int sum, x, y, remaining, ak = 0, xi[m];
+	unsigned int sum, x, y, remaining, ak = 0, * xi;
+
+	xi = malloc(m);
 
 	/* find k s.t. Tr(a^k) = 1 and 0 <= k < m */
 	for (i = 0; i < m; i++) {
@@ -1162,6 +1166,7 @@ static int build_deg2_base(struct bch_control *bch)
 		}
 	}
 	/* should not happen but check anyway */
+	free(xi);
 	return remaining ? -1 : 0;
 }
 
