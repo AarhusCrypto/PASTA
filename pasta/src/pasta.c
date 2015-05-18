@@ -60,7 +60,9 @@ static void run_pasta(OE oe, Map args) {
 	byte rand_buf[257] = { 0 }; // 1024 bits
 	RE e = 0, d = 0;
 
-	// Plain RSA
+	// ------
+	// Example doing plain RSA
+	// ------
 
 	// generate pseudo random  p
 	random_base16_string(oe, random, rand_buf, sizeof(rand_buf)-1);
@@ -92,11 +94,22 @@ static void run_pasta(OE oe, Map args) {
 	// compute ciphertext - Plain RSA encryption
 	zp = Zp_New(oe, N);
 	{
+		RE plaintext = 0;
 		RE message = 0;
 		RE ciphertext = 0;
-		message = zp->from_cstr("425645654356", 0);
+		byte msg[] = {"deadbeefdeadbeef\0"};
+		byte plx[17] = { 0 };
+		message = zp->from_cstr(msg, 0);
 		ciphertext = message->copy(0);
-		ciphertext->pow(d);
+		ciphertext->pow(e);
+		plaintext = ciphertext->copy(0);
+		plaintext->pow(d);
+		if (zp->to_cstr(plaintext, plx, 17) == RC_OK) {
+			oe->print("Decryption successful.");
+		}
+		else {
+			oe->print("Decryption failed");
+		};
 	}
 
 	// clean up - all elements from a Ring are cleaned too

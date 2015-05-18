@@ -244,6 +244,17 @@ COO_DEF(Ring, RE, ints_zero, RC * rc) {
 	return result;
 }}
 
+COO_DEF(Ring, RC, ints_to_cstr, RE re, byte * out, uint lout) {
+
+	TheIntsElm impl = re->impl;
+
+	if (mpz_sizeinbase(*impl->gmpelm, 16) > lout) return RC_BAD_ARGS;
+
+	mpz_get_str(out, 16, *impl->gmpelm);
+
+	return RC_OK;
+}}
+
 Ring TheIntegers_New(OE oe) {
 	Ring ints = (Ring)oe->getmem(sizeof(*ints));
 	Ints impl = (Ints)oe->getmem(sizeof(*impl));
@@ -255,6 +266,7 @@ Ring TheIntegers_New(OE oe) {
 	ints->from_ull = COO_attach(ints, Ring_ints_from_ull);
 	ints->one = COO_attach(ints, Ring_ints_one);
 	ints->zero = COO_attach(ints, Ring_ints_zero);
+	ints->to_cstr = COO_attach(ints, Ring_ints_to_cstr);
 	ints->impl = impl;
 	impl->oe = oe;
 	impl->allocated_items = SingleLinkedList_new(oe);
@@ -603,6 +615,18 @@ COO_DEF(Ring, RE, zp_zero, RC * rc ) {
 
 }}
 
+COO_DEF(Ring, RC, zp_to_cstr, RE re, byte * out, uint lout) {
+
+	ZpE impl = re->impl;
+
+	if (mpz_sizeinbase(*impl->elm, 16) > lout) return RC_BAD_ARGS;
+
+	mpz_get_str(out, 16, *impl->elm);
+
+	return RC_OK;
+}}
+
+
 Ring Zp_New(OE oe, RE p) {
 	Ring res = (Ring)oe->getmem(sizeof(*res));
 	Zp zp = (Zp)oe->getmem(sizeof(*zp));
@@ -612,6 +636,7 @@ Ring Zp_New(OE oe, RE p) {
 	res->from_ull = COO_attach(res, Ring_zp_from_ull);
 	res->one = COO_attach(res, Ring_zp_one);
 	res->zero = COO_attach(res, Ring_zp_zero);
+	res->to_cstr = COO_attach(res, Ring_zp_to_cstr);
 	res->impl = zp;
 	zp->oe = oe;
 	zp->allocated_elms = SingleLinkedList_new(oe);

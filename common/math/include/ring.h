@@ -150,6 +150,8 @@ typedef struct _ring_ {
 	RE(*from_ull)(ull v, RC * rc);
 	// rc optional, {str} is in base16
 	RE(*from_cstr)(const char * str, RC * rc);
+	// serialize element out in base 16
+	RC(*to_cstr)(RE elm, char * out, uint lout);
 	void * impl;
 } * Ring;
 
