@@ -1,7 +1,9 @@
 #include "hashmap.h"
 #include <singlelinkedlist.h>
 #include <coov4.h>
+#include <osal.h>
 
+List SingleLinkedList_new(OE oe);
 typedef struct _hash_map_ {
   List * buckets;
   uint lbuckets;

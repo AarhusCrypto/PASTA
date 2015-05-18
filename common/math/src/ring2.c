@@ -8,7 +8,7 @@ List SingleLinkedList_new(OE oe);
 typedef struct _the_ints_ {
 	OE oe;
 	List allocated_items; // List<RE>
-} * Ints;
+} *Ints;
 
 typedef struct _the_ints_elm_ {
 	Ints origin;
@@ -18,7 +18,7 @@ typedef struct _the_ints_elm_ {
 COO_DEF(RE, RC, ints_add, RE other) {
 	TheIntsElm impl = (TheIntsElm)this->impl;
 	TheIntsElm othr = other->impl;
-	
+
 	mpz_t * res = impl->origin->oe->getmem(sizeof(*res));
 	if (!res) return RC_NOMEM;
 
@@ -51,7 +51,7 @@ COO_DEF(RE, RC, ints_pow, RE other) {
 	mpz_t * res = impl->origin->oe->getmem(sizeof(*res));
 	if (!res) return RC_NOMEM;
 
-	
+
 
 	mpz_pow_ui(*res, *impl->gmpelm, mpz_get_ui(*othr->gmpelm));
 	impl->origin->oe->putmem(impl->gmpelm);
@@ -150,7 +150,7 @@ COO_DEF(Ring, RE, ints_from_cstr, const char * cstr) {
 	if (!result) return 0;
 
 	relm = (TheIntsElm)result->impl;
-	mpz_set_str(*relm->gmpelm, cstr,10);
+	mpz_set_str(*relm->gmpelm, cstr, 10);
 
 	return result;
 }}
@@ -244,5 +244,5 @@ void TheIntegers_Destroy(Ring * ring) {
 
 Ring Zp_New(OE oe, RE p) {
 	Ring res = (Ring)oe->getmem(sizeof(*res));
-		return res;
+	return res;
 }

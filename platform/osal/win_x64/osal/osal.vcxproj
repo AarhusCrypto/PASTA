@@ -44,7 +44,10 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\rwl\Documents\trunk_coov4\platform\osal\win_x64;C:\Users\rwl\Documents\trunk_coov4\platform\osal\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+		..;
+		..\..\include;%(AdditionalIncludeDirectories)
+	  </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
@@ -83,6 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\common.c" />
+    <ClCompile Include="..\..\src\intkeymap.c" />
     <ClCompile Include="..\..\src\rnd.c" />
     <ClCompile Include="..\..\src\semaphore.c" />
     <ClCompile Include="..\..\src\singlelinkedlist.c" />
