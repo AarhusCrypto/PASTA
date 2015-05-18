@@ -408,6 +408,40 @@ COO_DEF(RE, RC, zp_mul, RE other) {
 
 }}
 
+
+COO_DEF(RE, RC, zp_sub, RE other) {
+	ZpE impl = this->impl;
+	Ring org = impl->origin;
+	Zp zp = (Zp)org->impl;
+	OE oe = zp->oe;
+	ZpE ozpe = other->impl;
+	mpz_t * res = oe->getmem(sizeof(*res));
+
+	mpz_sub(*res, *impl->elm, *ozpe->elm);
+	mpz_mod(*res, *res, *zp->mod);
+	oe->putmem(impl->elm);
+	impl->elm = res;
+
+	return RC_OK;
+
+}}
+
+
+COO_DEF(RE, RC, zp_div, RE other) {
+	ZpE impl = this->impl;
+	Ring org = impl->origin;
+	Zp zp = (Zp)org->impl;
+	OE oe = zp->oe;
+	ZpE ozpe = other->impl;
+	mpz_t * res = oe->getmem(sizeof(*res));
+	RE invs = other->copy(0);
+
+	invs->inv();
+	this->mul(invs);
+	return RC_OK;
+
+}}
+
 COO_DEF(RE, RC, zp_pow, RE other) {
 	ZpE impl = this->impl;
 	Ring org = impl->origin;
@@ -466,6 +500,8 @@ static void set_zpelm_functions(RE re) {
 	re->pow = COO_attach(re, RE_zp_pow);
 	re->powi = COO_attach(re, RE_zp_powi);
 	re->inv = COO_attach(re, RE_zp_inv);
+	re->sub = COO_attach(re, RE_zp_sub);
+	re->div = COO_attach(re, RE_zp_div);
 }
 
 static void ZpE_Destroy(RE * elm) {
