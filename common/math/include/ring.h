@@ -59,6 +59,27 @@ Changes:
 #include <osal.h>
 
 typedef struct _ring_element_ {
+
+	/*!
+	* Modify this instance to be the quotient with {other}.
+	*
+	* \param other - The other element to add
+	*
+	* \return RC_OK on success. Otherwise this element has not
+	*         changed due to some error.
+	*/
+	RC(*div)(struct _ring_element_ * other);
+
+	/*!
+	* Modify this instance to be the difference with {other}.
+	*
+	* \param other - The other element to add
+	*
+	* \return RC_OK on success. Otherwise this element has not
+	*         changed due to some error.
+	*/
+	RC(*sub)(struct _ring_elmement_ * other);
+
 	/*!
 	 * Modify this instance to be the sum with {other}.
 	 *
@@ -67,7 +88,7 @@ typedef struct _ring_element_ {
 	 * \return RC_OK on success. Otherwise this element has not
 	 *         changed due to some error.
 	 */
-	RC (*add)(struct _ring_element * other);
+	RC (*add)(struct _ring_element_ * other);
 
 	/*!
 	 * Modify this instance to be the product with {other}.
@@ -77,7 +98,7 @@ typedef struct _ring_element_ {
 	 * \return RC_OK on success. Otherwise this element has not
 	 *         changed due to some error.
 	 */
-	RC (*mul)(struct _ring_element * other);
+	RC (*mul)(struct _ring_element_ * other);
 
 	/*!
 	 * Suppose {other} has an interpretation as an integer. 
@@ -90,7 +111,7 @@ typedef struct _ring_element_ {
 	 * \return RC_OK on success. Otherwise this element has not 
 	 *         changed due to some error .
 	 */
-	RC (*pow)(struct _ring_element * other);
+	RC (*pow)(struct _ring_element_ * other);
 
 	/*!
 	 * Modify this instance to be the {i}th power.
@@ -131,6 +152,21 @@ typedef struct _ring_ {
  */
 Ring TheIntegers_New(OE oe);
 void TheIntegers_Destroy(Ring * r);
+
+// --- Number theoretical support for TheIntegers
+
+/*!
+ * Return the next prime greater than {re} allocated
+ * and managed in the context of {theintegers}.
+ *
+ * \param theintegers - context to create prime in
+ * \param re          - offset for finde next prime
+ *
+ * \return a highly proble prime (accoding to gmp doc).
+ *
+ * see: https://gmplib.org/manual/Number-Theoretic-Functions.html
+ */
+RE TheIntegers_NextPrime(Ring theintegers, RE re);
 
 /*!
  * Create a Ring where computation is done modulo p for 

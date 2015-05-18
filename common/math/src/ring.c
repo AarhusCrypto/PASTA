@@ -6,7 +6,6 @@
 
 List SingleLinkedList_new(OE oe);
 
-
 // ---------------------------------------------------
 // The Integers implementation based on GMP
 // ---------------------------------------------------
@@ -28,6 +27,35 @@ COO_DEF(RE, RC, ints_add, RE other) {
 	if (!res) return RC_NOMEM;
 
 	mpz_add(*res, *(impl->gmpelm), *(othr->gmpelm));
+	impl->origin->oe->putmem(impl->gmpelm);
+	impl->gmpelm = res;
+
+	return RC_OK;
+}}
+
+
+COO_DEF(RE, RC, ints_sub, RE other) {
+	TheIntsElm impl = (TheIntsElm)this->impl;
+	TheIntsElm othr = other->impl;
+
+	mpz_t * res = impl->origin->oe->getmem(sizeof(*res));
+	if (!res) return RC_NOMEM;
+
+	mpz_sub(*res, *(impl->gmpelm), *(othr->gmpelm));
+	impl->origin->oe->putmem(impl->gmpelm);
+	impl->gmpelm = res;
+
+	return RC_OK;
+}}
+
+COO_DEF(RE, RC, ints_div, RE other) {
+	TheIntsElm impl = (TheIntsElm)this->impl;
+	TheIntsElm othr = other->impl;
+	
+	mpz_t * res = impl->origin->oe->getmem(sizeof(*res));
+	if (!res) return RC_NOMEM;
+
+	mpz_tdiv_r(*res,*impl->gmpelm,*(othr->gmpelm));
 	impl->origin->oe->putmem(impl->gmpelm);
 	impl->gmpelm = res;
 
@@ -79,8 +107,6 @@ COO_DEF(RE, RC, ints_powi, ull i) {
 	impl->gmpelm = res;
 
 	return RC_OK;
-
-
 }}
 
 static void set_intselm_functions(RE re);
@@ -115,12 +141,12 @@ static void TheIntegers_Elm_Destroy(RE * re) {
 static RE TheIntegers_Elm_New(Ints impl) {
 	RE re = impl->oe->getmem(sizeof(*re));
 	TheIntsElm elm = impl->oe->getmem(sizeof(*elm));
-	mpz_t gmpint = { 0 };
+	mpz_t * gmpint = impl->oe->getmem(sizeof(*gmpint));
 
 	re->impl = elm;
 	elm->origin = impl;
-	mpz_init_set_ui(gmpint, 0);
-
+	mpz_init_set_ui(*gmpint, 0);
+	elm->gmpelm = gmpint;
 	set_intselm_functions(re);
 	impl->allocated_items->add_element(re);
 
@@ -145,34 +171,49 @@ static void set_intselm_functions(RE re) {
 	re->mul = COO_attach(re, RE_ints_mul);
 	re->pow = COO_attach(re, RE_ints_pow);
 	re->powi = COO_attach(re, RE_ints_powi);
+	re->sub = COO_attach(re, RE_ints_sub);
+	re->div = COO_attach(re, RE_ints_div);
 }
 
-COO_DEF(Ring, RE, ints_from_cstr, const char * cstr) {
+COO_DEF(Ring, RE, ints_from_cstr, const char * cstr, RC * rc) {
 	Ints impl = (Ints)this->impl;
 	TheIntsElm relm = 0;
-
+	int r = 0;
 	RE result = TheIntegers_Elm_New(impl);
-	if (!result) return 0;
+	if (!result) {
+		if (rc) *rc = RC_NOMEM;
+		return 0;
+	}
 
 	relm = (TheIntsElm)result->impl;
-	mpz_set_str(*relm->gmpelm, cstr,10);
+	r = mpz_set_str(*relm->gmpelm, cstr,10);
 
+	if (r == -1) {
+		if (rc) *rc = RC_BAD_ARGS;
+		return 0;
+	}
+
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
-COO_DEF(Ring, RE, ints_from_ull, ull v) {
+COO_DEF(Ring, RE, ints_from_ull, ull v, RC * rc) {
 	Ints impl = (Ints)this->impl;
 	TheIntsElm relm = 0;
 
 	RE result = TheIntegers_Elm_New(impl);
-	if (!result) return 0;
+	if (!result) {
+		if (rc) *rc = RC_NOMEM;
+		return 0;
+	}
 
 	relm = (TheIntsElm)result->impl;
 	mpz_set_ui(*relm->gmpelm, v);
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
-COO_DEF(Ring, RE, ints_one) {
+COO_DEF(Ring, RE, ints_one, RC * rc ) {
 	Ints impl = (Ints)this->impl;
 	TheIntsElm relm = 0;
 
@@ -181,10 +222,11 @@ COO_DEF(Ring, RE, ints_one) {
 
 	relm = (TheIntsElm)result->impl;
 	mpz_set_ui(*relm->gmpelm, 1);
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
-COO_DEF(Ring, RE, ints_zero) {
+COO_DEF(Ring, RE, ints_zero, RC * rc) {
 	Ints impl = (Ints)this->impl;
 	TheIntsElm relm = 0;
 
@@ -193,6 +235,7 @@ COO_DEF(Ring, RE, ints_zero) {
 
 	relm = (TheIntsElm)result->impl;
 	mpz_set_ui(*relm->gmpelm, 0);
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
@@ -230,6 +273,8 @@ void TheIntegers_Destroy(Ring * ring) {
 	impl = (Ints)r->impl;
 	if (!impl) return;
 
+	oe = impl->oe;
+
 	for (i = 0; i < impl->allocated_items->size(); ++i) {
 		RE cur = (RE)impl->allocated_items->get_element(i);
 		TheIntegers_Elm_Destroy(&cur);
@@ -246,6 +291,26 @@ void TheIntegers_Destroy(Ring * ring) {
 	SingleLinkedList_destroy(&impl->allocated_items);
 	oe->putmem(impl);
 }
+
+RE TheIntegers_NextPrime(Ring theintegers, RE re) {
+	Ints impl = (Ints)theintegers->impl;
+	RE result = TheIntegers_Elm_New(impl);
+	TheIntsElm offset = re->impl;
+	mpz_t o = { 0 };
+	TheIntsElm rese = 0;
+
+	mpz_add_ui(o, *offset->gmpelm, 0);
+
+	while (mpz_probab_prime_p(o, 2) == 0) {
+		mpz_add_ui(o, o, 1);
+	}
+
+	rese = result->impl;
+	mpz_add_ui(*rese->gmpelm, o, 0);
+
+	return result;
+}
+
 
 // ---------------------------------------------------
 // Zp implementation
@@ -300,6 +365,7 @@ COO_DEF(RE, RC, zp_add, RE other) {
 	mpz_t * res = oe->getmem(sizeof(*res));
 
 	mpz_add(*res, *impl->elm, *ozpe->elm);
+	mpz_mod(*res, *res, *zp->mod);
 	oe->putmem(impl->elm);
 	impl->elm = res;
 
@@ -315,6 +381,7 @@ COO_DEF(RE, RE, zp_cpy) {
 	ZpE rzp = result->impl;
 
 	mpz_add_ui(*rzp->elm, *impl->elm, 0);
+	
 
 	return result;
 }}
@@ -328,6 +395,7 @@ COO_DEF(RE, RC, zp_mul, RE other) {
 	mpz_t * res = oe->getmem(sizeof(*res));
 
 	mpz_mul(*res, *impl->elm, *ozpe->elm);
+	mpz_mod(*res, *res, *zp->mod);
 	oe->putmem(impl->elm);
 	impl->elm = res;
 
@@ -343,7 +411,7 @@ COO_DEF(RE, RC, zp_pow, RE other) {
 	ZpE ozpe = other->impl;
 	mpz_t * res = oe->getmem(sizeof(*res));
 
-	mpz_pow_ui(*res, *impl->elm, mpz_get_ui(*ozpe->elm));
+	mpz_powm(*res, *impl->elm, *ozpe->elm,*zp->mod);
 	oe->putmem(impl->elm);
 	impl->elm = res;
 
@@ -358,7 +426,9 @@ COO_DEF(RE, RC, zp_powi,ull i) {
 	OE oe = zp->oe;
 	mpz_t * res = oe->getmem(sizeof(*res));
 
-	mpz_pow_ui(*res, *impl->elm, i);
+	
+	mpz_powm_ui(*res,*impl->elm,i,*zp->mod);
+
 	oe->putmem(impl->elm);
 	impl->elm = res;
 
@@ -425,41 +495,45 @@ failure:
 	return 0;
 }
 
-COO_DEF(Ring, RE, zp_from_cstr, const char * cstr) {
+COO_DEF(Ring, RE, zp_from_cstr, const char * cstr, RC * rc) {
 	Zp impl = (Zp)this->impl;
 	RE result = ZpE_New(this);
 	ZpE rzp = result->impl;
 
 	mpz_set_str(*rzp->elm, cstr,10);
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
-COO_DEF(Ring, RE, zp_from_ull, ull v) {
+COO_DEF(Ring, RE, zp_from_ull, ull v, RC * rc) {
 	Zp impl = (Zp)this->impl;
 	RE result = ZpE_New(this);
 	ZpE rzp = result->impl;
 
 	mpz_set_ui(*rzp->elm, v);
+	if (rc) *rc = RC_OK;
 	return result;
 }}
 
-COO_DEF(Ring, RE, zp_one) {
+COO_DEF(Ring, RE, zp_one, RC * rc) {
 	Zp impl = (Zp)this->impl;
 	RE result = ZpE_New(this);
 	ZpE rzp = result->impl;
 
 	mpz_set_ui(*rzp->elm, 1);
+	if (rc) *rc = RC_OK;
 	return result;
 
 
 }}
 
-COO_DEF(Ring, RE, zp_zero) {
+COO_DEF(Ring, RE, zp_zero, RC * rc ) {
 	Zp impl = (Zp)this->impl;
 	RE result = ZpE_New(this);
 	ZpE rzp = result->impl;
 
 	mpz_set_ui(*rzp->elm, 0);
+	if (rc) *rc = RC_OK;
 	return result;
 
 }}
