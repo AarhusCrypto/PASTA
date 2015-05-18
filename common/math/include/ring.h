@@ -61,6 +61,13 @@ Changes:
 typedef struct _ring_element_ {
 
 	/*!
+	 * Modify this instance to be the mul-inverse of it self.
+	 *
+	 * \return RC_OK on success.
+	 */
+	RC(*inv)(void);
+
+	/*!
 	* Modify this instance to be the quotient with {other}.
 	*
 	* \param other - The other element to add
@@ -141,7 +148,7 @@ typedef struct _ring_ {
 	RE(*one)(RC * rc);
 	// rc optional
 	RE(*from_ull)(ull v, RC * rc);
-	// rc optional
+	// rc optional, {str} is in base16
 	RE(*from_cstr)(const char * str, RC * rc);
 	void * impl;
 } * Ring;

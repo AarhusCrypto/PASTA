@@ -8,6 +8,7 @@
 #include <utils/options.h>
 #include <Ring.h>
 #include <rnd.h>
+#include <encoding/hex.h>
 
 static bool check_args(OE oe, Map args) {
 
@@ -23,23 +24,31 @@ static bool check_args(OE oe, Map args) {
 	return True;
 }
 
-static void random_base10_string(OE oe,Rnd rnd, byte * b, uint lb) {
+static void random_base16_string(OE oe,Rnd rnd, byte * b, uint lb) {
 	byte * buffer = oe->getmem(lb);
 	uint i = 0;
 	//char cs[] = {"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
-	char cs[] = {"0123456789"};
+	char cs[] = {"0123456789abcdef"};
 	rnd->rand(buffer, lb);
 
-	// bias to 0=250,1=251,...,5=255
 	for (i = 0; i < lb; ++i) {
-		b[i] = cs[buffer[i] % 10];
+		b[i] = cs[buffer[i] % 16];
 	}
 	b[lb - 1] = 0;
+}
+
+static void bytes_as_base16(byte * in, uint lin, byte * out) {
+	bs2hs(in, out, lin);
+}
+
+static void base16_as_bytes(byte * in, uint lin, byte * out) {
+	hs2bs(in, out, lin);
 }
 
 static void run_pasta(OE oe, Map args) {
 	Ring integers = TheIntegers_New(oe);
 	Ring zp = 0;
+	Ring zphi = 0;
 	Rnd random = LibcWeakRandomSource_New(oe);
 	RE p = 0, q = 0;
 	RE a = 0, b = 0, c = 0;
@@ -48,28 +57,52 @@ static void run_pasta(OE oe, Map args) {
 	RE phi = 0;
 	
 	RC rc = RC_OK;
-	byte rand_buf[257] = { 0 }; // log_2(10) > 3 thus we have > 128*3 bits 
+	byte rand_buf[257] = { 0 }; // 1024 bits
+	RE e = 0, d = 0;
 
-	random_base10_string(oe, random, rand_buf, sizeof(rand_buf)-1);
+	// Plain RSA
+
+	// generate pseudo random  p
+	random_base16_string(oe, random, rand_buf, sizeof(rand_buf)-1);
 	p = TheIntegers_NextPrime(integers, integers->from_cstr(rand_buf, &rc));
 
-	random_base10_string(oe, random, rand_buf, sizeof(rand_buf)-1);
+	// generate pseudo random  q
+	random_base16_string(oe, random, rand_buf, sizeof(rand_buf)-1);
 	q = TheIntegers_NextPrime(integers, integers->from_cstr(rand_buf, &rc));
 
-	N = integers->one(0);
-	N->mul(p);
+	// N = p * q
+	N = integers->zero(0);
+	N->add(p);
 	N->mul(q);
 	
+	// compute phi(N)
 	pmin1 = p->copy(0);
 	pmin1->sub(integers->one(0));
 	qmin1 = q->copy(0);
 	qmin1->sub(integers->one(0));
+	phi = pmin1->copy(0);
+	phi->mul(qmin1);
 
+	// compute private exponent from public exponent 65537
+	zphi = Zp_New(oe, phi);
+	e = zphi->from_cstr("65537", 0);
+	d = e->copy(0);
+	d->inv(0);
 
+	// compute ciphertext - Plain RSA encryption
 	zp = Zp_New(oe, N);
-	
+	{
+		RE message = 0;
+		RE ciphertext = 0;
+		message = zp->from_cstr("425645654356", 0);
+		ciphertext = message->copy(0);
+		ciphertext->pow(d);
+	}
 
+	// clean up - all elements from a Ring are cleaned too
+	// when the Ring is destroyed.
 	Zp_Destroy(&zp);
+	Zp_Destroy(&zphi);
 	TheIntegers_Destroy(&integers);
 }
 

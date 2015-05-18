@@ -165,6 +165,10 @@ COO_DEF(RE, RE, ints_copy, RC * rc) {
 	return result;
 }}
 
+COO_DEF(RE, RC, ints_inv) {
+	return RC_FAIL;
+}}
+
 static void set_intselm_functions(RE re) {
 	re->add = COO_attach(re, RE_ints_add);
 	re->copy = COO_attach(re, RE_ints_copy);
@@ -173,6 +177,7 @@ static void set_intselm_functions(RE re) {
 	re->powi = COO_attach(re, RE_ints_powi);
 	re->sub = COO_attach(re, RE_ints_sub);
 	re->div = COO_attach(re, RE_ints_div);
+	re->inv = COO_attach(re, RE_ints_inv);
 }
 
 COO_DEF(Ring, RE, ints_from_cstr, const char * cstr, RC * rc) {
@@ -186,7 +191,7 @@ COO_DEF(Ring, RE, ints_from_cstr, const char * cstr, RC * rc) {
 	}
 
 	relm = (TheIntsElm)result->impl;
-	r = mpz_set_str(*relm->gmpelm, cstr,10);
+	r = mpz_set_str(*relm->gmpelm, cstr,16);
 
 	if (r == -1) {
 		if (rc) *rc = RC_BAD_ARGS;
@@ -436,12 +441,31 @@ COO_DEF(RE, RC, zp_powi,ull i) {
 
 }}
 
+COO_DEF(RE, RC, zp_inv) {
+	ZpE impl = this->impl;
+	Ring org = impl->origin;
+	Zp zp = (Zp)org->impl;
+	OE oe = zp->oe;
+	mpz_t * res = oe->getmem(sizeof(*res));
+	mpz_t g = { 0 }, t = { 0 };
+
+	mpz_init(g);
+	mpz_init(t);
+	mpz_gcdext(g, *res, t, *impl->elm, *zp->mod);
+	mpz_clear(g);
+	mpz_clear(t);
+	zp->oe->putmem(impl->elm);
+	impl->elm = res;
+	return RC_OK;
+}}
+
 static void set_zpelm_functions(RE re) {
 	re->add = COO_attach(re, RE_zp_add);
 	re->copy = COO_attach(re, RE_zp_cpy);
 	re->mul = COO_attach(re, RE_zp_mul);
 	re->pow = COO_attach(re, RE_zp_pow);
 	re->powi = COO_attach(re, RE_zp_powi);
+	re->inv = COO_attach(re, RE_zp_inv);
 }
 
 static void ZpE_Destroy(RE * elm) {
@@ -489,18 +513,23 @@ static RE ZpE_New(Ring origin) {
 	set_zpelm_functions(result);
 	zp->allocated_elms->add_element(result);
 
+	elm->origin = origin;
+	elm->elm = oe->getmem(sizeof(*elm->elm));
+	mpz_init_set_ui(*elm->elm, 0);
+
 	return result;
 failure:
 	ZpE_Destroy(&result);
 	return 0;
 }
 
+
 COO_DEF(Ring, RE, zp_from_cstr, const char * cstr, RC * rc) {
 	Zp impl = (Zp)this->impl;
 	RE result = ZpE_New(this);
 	ZpE rzp = result->impl;
 
-	mpz_set_str(*rzp->elm, cstr,10);
+	mpz_set_str(*rzp->elm, cstr,16);
 	if (rc) *rc = RC_OK;
 	return result;
 }}
